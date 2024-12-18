@@ -410,8 +410,8 @@ func (tail *Tail) waitForChanges() error {
 		}
 		tail.Logger.Printf("Successfully reopened truncated %s", tail.Filename)
 		tail.openReader()
-		// Seek to end only if truncate is to new end
-		err := tail.seekEnd()
+		// Reset Seek on file truncation. Possible duplicates if file was truncated partially
+		err := tail.seekStart()
 		if err != nil {
 			log.Printf("Error trying to seek to end. Ignoring")
 		}
@@ -434,6 +434,10 @@ func (tail *Tail) openReader() {
 
 func (tail *Tail) seekEnd() error {
 	return tail.seekTo(SeekInfo{Offset: 0, Whence: io.SeekEnd})
+}
+
+func (tail *Tail) seekStart() error {
+	return tail.seekTo(SeekInfo{Offset: 0, Whence: io.SeekStart})
 }
 
 func (tail *Tail) seekTo(pos SeekInfo) error {
