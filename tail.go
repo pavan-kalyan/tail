@@ -413,8 +413,9 @@ func (tail *Tail) waitForChanges() error {
 		// Reset Seek on file truncation. Possible duplicates if file was truncated partially
 		err := tail.seekStart()
 		if err != nil {
-			log.Printf("Error trying to seek to end. Ignoring")
+			tail.Logger.Printf("Error trying to seek to end. Ignoring")
 		}
+		tail.Logger.Printf("Successfully seeked to start %s", tail.Filename)
 		return nil
 	case <-tail.Dying():
 		return ErrStop
