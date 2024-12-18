@@ -2,11 +2,11 @@
 // Copyright (c) 2015 HPE Software Inc. All rights reserved.
 // Copyright (c) 2013 ActiveState Software Inc. All rights reserved.
 
-//nxadm/tail provides a Go library that emulates the features of the BSD `tail`
-//program. The library comes with full support for truncation/move detection as
-//it is designed to work with log rotation tools. The library works on all
-//operating systems supported by Go, including POSIX systems like Linux and
-//*BSD, and MS Windows. Go 1.9 is the oldest compiler release supported.
+// nxadm/tail provides a Go library that emulates the features of the BSD `tail`
+// program. The library comes with full support for truncation/move detection as
+// it is designed to work with log rotation tools. The library works on all
+// operating systems supported by Go, including POSIX systems like Linux and
+// *BSD, and MS Windows. Go 1.9 is the oldest compiler release supported.
 package tail
 
 import (
@@ -21,10 +21,11 @@ import (
 	"sync"
 	"time"
 
+	"gopkg.in/tomb.v1"
+
 	"github.com/nxadm/tail/ratelimiter"
 	"github.com/nxadm/tail/util"
 	"github.com/nxadm/tail/watch"
-	"gopkg.in/tomb.v1"
 )
 
 var (
@@ -70,11 +71,12 @@ type logger interface {
 // Config is used to specify how a file must be tailed.
 type Config struct {
 	// File-specifc
-	Location  *SeekInfo // Tail from this location. If nil, start at the beginning of the file
-	ReOpen    bool      // Reopen recreated files (tail -F)
-	MustExist bool      // Fail early if the file does not exist
-	Poll      bool      // Poll for file changes instead of using the default inotify
-	Pipe      bool      // The file is a named pipe (mkfifo)
+	Location      *SeekInfo // Tail from this location. If nil, start at the beginning of the file
+	ResetLocation bool      // Reset Seek location to the start of the file, when detecting
+	ReOpen        bool      // Reopen recreated files (tail -F)
+	MustExist     bool      // Fail early if the file does not exist
+	Poll          bool      // Poll for file changes instead of using the default inotify
+	Pipe          bool      // The file is a named pipe (mkfifo)
 
 	// Generic IO
 	Follow        bool // Continue looking for new lines (tail -f)
@@ -408,6 +410,11 @@ func (tail *Tail) waitForChanges() error {
 		}
 		tail.Logger.Printf("Successfully reopened truncated %s", tail.Filename)
 		tail.openReader()
+		// Seek to end only if truncate is to new end
+		err := tail.seekEnd()
+		if err != nil {
+			log.Printf("Error trying to seek to end. Ignoring")
+		}
 		return nil
 	case <-tail.Dying():
 		return ErrStop
