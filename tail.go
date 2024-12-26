@@ -308,10 +308,17 @@ func (tail *Tail) tailFileSync() {
 			}
 		}
 
+		pos, err := tail.Tell()
+		if err != nil {
+			tail.Logger.Printf("Error trying to get position just before read")
+		} else {
+			tail.Logger.Printf("about to read line from %d", pos)
+		}
 		line, err := tail.readLine()
 
 		// Process `line` even if err is EOF.
 		if err == nil {
+			tail.Logger.Printf("Finished reading line %s", line)
 			cooloff := !tail.sendLine(line)
 			if cooloff {
 				// Wait a second before seeking till the end of
@@ -329,7 +336,9 @@ func (tail *Tail) tailFileSync() {
 					return
 				}
 			}
+			tail.Logger.Printf("Finished sending line %s", line)
 		} else if err == io.EOF {
+			tail.Logger.Printf("GOT EOF IN MAIN LOOP")
 			if !tail.Follow {
 				if line != "" {
 					tail.sendLine(line)
@@ -339,6 +348,7 @@ func (tail *Tail) tailFileSync() {
 
 			if tail.Follow && line != "" {
 				tail.sendLine(line)
+				tail.Logger.Printf("Finished sending line %s IN EOF CASE", line)
 				if err := tail.seekEnd(); err != nil {
 					tail.Kill(err)
 					return
@@ -354,9 +364,12 @@ func (tail *Tail) tailFileSync() {
 					tail.Kill(err)
 				}
 				return
+			} else {
+				tail.Logger.Printf("Successfully finished waiting for changes")
 			}
 		} else {
 			// non-EOF error
+			tail.Logger.Printf("CATASTROPHIC ERROR\n")
 			tail.Killf("Error reading %s: %s", tail.Filename, err)
 			return
 		}
