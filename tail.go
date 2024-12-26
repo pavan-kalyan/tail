@@ -23,9 +23,9 @@ import (
 
 	"gopkg.in/tomb.v1"
 
-	"github.com/nxadm/tail/ratelimiter"
-	"github.com/nxadm/tail/util"
-	"github.com/nxadm/tail/watch"
+	"github.com/pavan-kalyan/tail/ratelimiter"
+	"github.com/pavan-kalyan/tail/util"
+	"github.com/pavan-kalyan/tail/watch"
 )
 
 var (
@@ -232,6 +232,8 @@ func (tail *Tail) reopen() error {
 			}
 			return fmt.Errorf("Unable to open file %s: %s", tail.Filename, err)
 		}
+		pos, err := tail.file.Seek(0, io.SeekCurrent)
+		tail.Logger.Printf("Initial position after Open: %d", pos)
 		break
 	}
 	return nil
@@ -410,12 +412,6 @@ func (tail *Tail) waitForChanges() error {
 		}
 		tail.Logger.Printf("Successfully reopened truncated %s", tail.Filename)
 		tail.openReader()
-		// Reset Seek on file truncation. Possible duplicates if file was truncated partially
-		err := tail.seekStart()
-		if err != nil {
-			tail.Logger.Printf("Error trying to seek to end. Ignoring")
-		}
-		tail.Logger.Printf("Successfully seeked to start %s", tail.Filename)
 		return nil
 	case <-tail.Dying():
 		return ErrStop
@@ -435,10 +431,6 @@ func (tail *Tail) openReader() {
 
 func (tail *Tail) seekEnd() error {
 	return tail.seekTo(SeekInfo{Offset: 0, Whence: io.SeekEnd})
-}
-
-func (tail *Tail) seekStart() error {
-	return tail.seekTo(SeekInfo{Offset: 0, Whence: io.SeekStart})
 }
 
 func (tail *Tail) seekTo(pos SeekInfo) error {
